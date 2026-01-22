@@ -1,13 +1,7 @@
 # ESP32-C5 WiFi/BLE Coexistence - Base Configuration
-# See COEX_TUNING_RESULTS.md for detailed test results
 #
 # To select a profile, build with:
-#   idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.balanced" build
-#
-# Available profiles:
-#   sdkconfig.balanced    - ~5 Mbit/s, ~90KB heap (default)
-#   sdkconfig.minimal_ram - ~3 Mbit/s, ~100KB heap
-#   sdkconfig.max_speed   - ~6-7 Mbit/s, ~55KB heap
+#   make PROFILE=<profile> build
 
 CONFIG_MBEDTLS_HAVE_TIME_DATE=y
 CONFIG_LWIP_SNTP_MAX_SERVERS=2
@@ -20,20 +14,13 @@ CONFIG_MBEDTLS_SSL_PROTO_TLS1_3=y
 CONFIG_BT_ENABLED=y
 CONFIG_BT_NIMBLE_ENABLED=y
 
-# CRITICAL: Disable IRAM optimizations for stable WiFi/BLE coexistence
+# IRAM optimizations disabled by default to preserve heap
+# Enable with iram_enabled profile if you have RAM to spare
 CONFIG_LWIP_IRAM_OPTIMIZATION=n
 CONFIG_ESP_WIFI_IRAM_OPT=n
 CONFIG_ESP_WIFI_RX_IRAM_OPT=n
 
-# BA windows - keep high for AMPDU (no RAM cost)
+# AMPDU for better throughput
 CONFIG_ESP_WIFI_TX_BA_WIN=32
 CONFIG_ESP_WIFI_AMPDU_TX_ENABLED=y
 CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y
-
-# Default profile (balanced) - override with profile files
-CONFIG_LWIP_TCP_WND_DEFAULT=16384
-CONFIG_LWIP_TCP_SND_BUF_DEFAULT=5744
-CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=10
-CONFIG_ESP_WIFI_RX_BA_WIN=16
-CONFIG_LWIP_TCPIP_RECVMBOX_SIZE=12
-CONFIG_LWIP_TCP_RECVMBOX_SIZE=12

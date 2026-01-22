@@ -9,8 +9,15 @@ WiFi/BLE coexistence.
 
 ## Key Findings
 
-IRAM optimalizations seem to significantly slow down throughput when BLE is
-active, so those should be disabled:
+**Buffer matching matters**: Following the ESP-IDF WiFi performance guide rules
+improves BLE coexistence throughput. Key rules:
+- `TCP_WND_DEFAULT` should match `DYNAMIC_RX_BUFFER_NUM` in KB
+- `TCP_SND_BUF_DEFAULT` should match `DYNAMIC_TX_BUFFER_NUM` in KB
+- `RX_BA_WIN` should be min(2×`STATIC_RX_BUFFER_NUM`, `DYNAMIC_RX_BUFFER_NUM`)
+
+**IRAM optimizations**: These improve throughput but consume significant RAM
+(~24KB less free heap). Disabled by default to preserve heap for applications.
+Test with the `iram_enabled` profile if you have RAM to spare.
 
 ```
 CONFIG_LWIP_IRAM_OPTIMIZATION=n
@@ -20,13 +27,17 @@ CONFIG_ESP_WIFI_RX_IRAM_OPT=n
 
 ## Profiles
 
-Three pre-tuned profiles are available:
+| Profile            | WiFi only | BLE coex | Free Heap |
+|--------------------|-----------|----------|-----------|
+| minimal_ram        | ~6 Mbit/s | ~2 Mbit/s |   ~110 KB |
+| balanced (default) | ~8 Mbit/s | ~4 Mbit/s |    ~92 KB |
+| max_speed          | ~11 Mbit/s | ~5 Mbit/s |    ~33 KB |
+| iram_enabled       | ~10 Mbit/s | ~4 Mbit/s |    ~68 KB |
 
-| Profile            | Throughput  | Free Heap | TCP_WND | Mailbox |
-|--------------------|-------------|-----------|---------|---------|
-| MINIMAL_RAM        |   ~3 Mbit/s |   ~100 KB |    8192 |      12 |
-| BALANCED (default) |   ~5 Mbit/s |    ~90 KB |   16384 |      12 |
-| MAX_SPEED          | ~6-7 Mbit/s |    ~55 KB |   32768 |      24 |
+> [!NOTE]
+> Throughput numbers vary with WiFi conditions (distance to router, interference,
+> network congestion). Use these as relative comparisons between profiles rather
+> than absolute expectations.
 
 See [COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
 
@@ -51,9 +62,10 @@ See [COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
    ```
 
 Available make targets:
-- `make PROFILE=balanced build` - Best tradeoff (~5 Mbit/s, ~90KB heap)
+- `make PROFILE=balanced build` - Best tradeoff (~4 Mbit/s BLE coex, ~90KB heap)
 - `make PROFILE=minimal_ram build` - For RAM-constrained apps (~3 Mbit/s, ~100KB heap)
-- `make PROFILE=max_speed build` - Maximum throughput (~6-7 Mbit/s, ~55KB heap)
+- `make PROFILE=max_speed build` - Maximum throughput (~5 Mbit/s BLE coex, ~35KB heap)
+- `make PROFILE=iram_enabled build` - Test IRAM optimizations (~4 Mbit/s, ~64KB heap)
 - `make PROFILE=balanced all` - Build, flash, and monitor in one command
 - `make build-all` - Build all profiles
 - `make clean-all` - Clean all profile build directories

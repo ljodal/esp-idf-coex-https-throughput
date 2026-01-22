@@ -398,7 +398,11 @@ static const test_config_t tests[] = {
     /* WiFi only baseline */
     {
         .name = "WiFi only",
+#ifdef CONFIG_SPEEDTEST_TLS_1_3
+        .tls_version = TLS_VERSION_1_3,
+#else
         .tls_version = TLS_VERSION_1_2,
+#endif
         .ble_enabled = false,
         .wifi_ps_enabled = false,
         .coex_pref = ESP_COEX_PREFER_BALANCE,
@@ -408,7 +412,11 @@ static const test_config_t tests[] = {
     /* BLE coexistence test */
     {
         .name = "BLE coex",
+#ifdef CONFIG_SPEEDTEST_TLS_1_3
+        .tls_version = TLS_VERSION_1_3,
+#else
         .tls_version = TLS_VERSION_1_2,
+#endif
         .ble_enabled = true,
         .wifi_ps_enabled = false,
         .coex_pref = ESP_COEX_PREFER_BALANCE,
