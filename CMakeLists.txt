@@ -2,6 +2,8 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
+# Keep sdkconfig in build directory to support multiple profiles
+set(SDKCONFIG ${CMAKE_BINARY_DIR}/sdkconfig)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 # "Trim" the build. Include the minimal set of components, main, and anything it depends on.

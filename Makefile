@@ -1,76 +1,88 @@
 # ESP32-C5 WiFi/BLE Coexistence Throughput Test
 #
 # Usage:
-#   make menuconfig              # Configure WiFi credentials
-#   make balanced                # Build with balanced profile
-#   make minimal_ram             # Build with minimal RAM profile
-#   make max_speed               # Build with max speed profile
-#   make flash monitor           # Flash and monitor
+#   make PROFILE=balanced build       # Build specific profile
+#   make PROFILE=balanced flash       # Flash specific profile
+#   make PROFILE=balanced monitor     # Monitor serial output
+#   make PROFILE=balanced all         # Build, flash, and monitor
+#   make build-all                    # Build all profiles (for testing)
+#   make menuconfig                   # Configure via menuconfig
+#   make clean                        # Clean current profile
+#   make clean-all                    # Clean all profile builds
 #
-# With WiFi credentials:
-#   WIFI_SSID=mynet WIFI_PASSWORD=secret make balanced
+# WiFi credentials (required):
+#   Create sdkconfig.wifi (gitignored) with your credentials:
+#     echo 'CONFIG_EXAMPLE_WIFI_SSID="your_ssid"' > sdkconfig.wifi
+#     echo 'CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"' >> sdkconfig.wifi
 #
-# Or create a .env file (gitignored):
-#   echo 'WIFI_SSID=mynet' > .env
-#   echo 'WIFI_PASSWORD=secret' >> .env
+# Profiles are auto-discovered from sdkconfig.* files
 
-# Load .env file if it exists
--include .env
+# Default profile
+PROFILE ?= balanced
 
-.PHONY: all balanced minimal_ram max_speed flash monitor menuconfig clean fullclean
+# Auto-discover profiles from sdkconfig.* files (excluding defaults and old)
+PROFILES := $(shell ls sdkconfig.* 2>/dev/null | sed 's/sdkconfig\.//' | grep -v -E '^(defaults|old|wifi)$$')
 
-all: balanced
+# Target chip
+TARGET := esp32c5
 
-# Ensure sdkconfig exists
-sdkconfig:
-	idf.py reconfigure
+# Build directory for current profile
+BUILD_DIR := build_$(PROFILE)
 
-# Apply a profile file to sdkconfig
-define apply_profile
-	@echo "Applying profile: $(1)"
-	@while IFS='=' read -r key value; do \
-		[ -z "$$key" ] && continue; \
-		case "$$key" in \#*) continue;; esac; \
-		sed -i '' "s|^$$key=.*|$$key=$$value|" sdkconfig; \
-	done < $(1)
-endef
+# Validate profile
+ifeq ($(filter $(PROFILE),$(PROFILES)),)
+$(error Invalid PROFILE '$(PROFILE)'. Available: $(PROFILES))
+endif
 
-# Apply WiFi credentials if set
-define apply_wifi
-	@if [ -n "$(WIFI_SSID)" ]; then \
-		sed -i '' 's|^CONFIG_EXAMPLE_WIFI_SSID=.*|CONFIG_EXAMPLE_WIFI_SSID="$(WIFI_SSID)"|' sdkconfig; \
-	fi
-	@if [ -n "$(WIFI_PASSWORD)" ]; then \
-		sed -i '' 's|^CONFIG_EXAMPLE_WIFI_PASSWORD=.*|CONFIG_EXAMPLE_WIFI_PASSWORD="$(WIFI_PASSWORD)"|' sdkconfig; \
-	fi
-endef
+.PHONY: all build flash monitor menuconfig clean clean-all build-all
 
-balanced: sdkconfig
-	$(call apply_profile,sdkconfig.balanced)
-	$(apply_wifi)
-	idf.py build
+# Default: build, flash, and monitor
+all: build flash monitor
 
-minimal_ram: sdkconfig
-	$(call apply_profile,sdkconfig.minimal_ram)
-	$(apply_wifi)
-	idf.py build
+# Build current profile
+build:
+	@echo "Building profile: $(PROFILE)"
+	@echo "Build directory: $(BUILD_DIR)"
+	@test -f sdkconfig.wifi || (echo "Error: sdkconfig.wifi not found. Create it with your WiFi credentials:" && \
+		echo "  echo 'CONFIG_EXAMPLE_WIFI_SSID=\"your_ssid\"' > sdkconfig.wifi" && \
+		echo "  echo 'CONFIG_EXAMPLE_WIFI_PASSWORD=\"your_pass\"' >> sdkconfig.wifi" && exit 1)
+	SDKCONFIG_DEFAULTS="sdkconfig.wifi;sdkconfig.defaults;sdkconfig.$(PROFILE)" \
+	idf.py -B $(BUILD_DIR) set-target $(TARGET) build
 
-max_speed: sdkconfig
-	$(call apply_profile,sdkconfig.max_speed)
-	$(apply_wifi)
-	idf.py build
-
+# Flash current profile
 flash:
-	idf.py flash
+	idf.py -B $(BUILD_DIR) flash
 
+# Monitor serial output
 monitor:
-	idf.py monitor
+	idf.py -B $(BUILD_DIR) monitor
 
+# Open menuconfig for current profile
 menuconfig:
-	idf.py menuconfig
+	idf.py -B $(BUILD_DIR) menuconfig
 
+# Clean current profile
 clean:
-	idf.py clean
+	idf.py -B $(BUILD_DIR) fullclean
 
-fullclean:
-	idf.py fullclean
+# Build all profiles (for test preparation)
+build-all:
+	@for profile in $(PROFILES); do \
+		echo ""; \
+		echo "========================================"; \
+		echo "Building profile: $$profile"; \
+		echo "========================================"; \
+		$(MAKE) PROFILE=$$profile build || exit 1; \
+	done
+	@echo ""
+	@echo "All profiles built successfully!"
+
+# Clean all profile build directories
+clean-all:
+	@for profile in $(PROFILES); do \
+		if [ -d "build_$$profile" ]; then \
+			echo "Removing build_$$profile"; \
+			rm -rf "build_$$profile"; \
+		fi; \
+	done
+	@echo "All build directories cleaned"

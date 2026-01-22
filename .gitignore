@@ -1,5 +1,6 @@
 # ESP-IDF build artifacts
 build/
+build_*/
 sdkconfig
 sdkconfig.old
 dependencies.lock
@@ -20,3 +21,4 @@ __pycache__/
 .envrc
 .cache/
 .claude/
+sdkconfig.wifi

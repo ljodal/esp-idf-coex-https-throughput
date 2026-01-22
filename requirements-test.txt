@@ -1,0 +1,5 @@
+# pytest-embedded dependencies for ESP-IDF testing
+pytest-embedded-serial-esp>=1.0.0
+pytest-embedded-idf>=1.0.0
+pytest-rerunfailures
+pytest-timeout

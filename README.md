@@ -32,33 +32,56 @@ See [COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
 
 ## Quick Start
 
-1. Set target:
+1. Create `sdkconfig.wifi` with your WiFi credentials:
    ```bash
-   idf.py set-target esp32c5
+   echo 'CONFIG_EXAMPLE_WIFI_SSID="your_ssid"' > sdkconfig.wifi
+   echo 'CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"' >> sdkconfig.wifi
    ```
 
-2. Build with a profile (pass WiFi credentials via environment):
+2. Build with a profile:
    ```bash
-   WIFI_SSID="your_ssid" WIFI_PASSWORD="secret" make balanced
-   ```
-
-   Or create a `.env` file (gitignored) for convenience:
-   ```bash
-   echo 'WIFI_SSID=your_ssid' >> .env
-   echo 'WIFI_PASSWORD=secret' >> .env
-   make balanced
+   make PROFILE=balanced build
    ```
 
 3. Flash and monitor:
    ```bash
-   make flash monitor
+   make PROFILE=balanced flash monitor
    ```
 
 Available make targets:
-- `make balanced` - Best tradeoff (~5 Mbit/s, ~90KB heap)
-- `make minimal_ram` - For RAM-constrained apps (~3 Mbit/s, ~100KB heap)
-- `make max_speed` - Maximum throughput (~6-7 Mbit/s, ~55KB heap)
-- `make menuconfig` - Configure via menu
+- `make PROFILE=balanced build` - Best tradeoff (~5 Mbit/s, ~90KB heap)
+- `make PROFILE=minimal_ram build` - For RAM-constrained apps (~3 Mbit/s, ~100KB heap)
+- `make PROFILE=max_speed build` - Maximum throughput (~6-7 Mbit/s, ~55KB heap)
+- `make PROFILE=balanced all` - Build, flash, and monitor in one command
+- `make build-all` - Build all profiles
+- `make clean-all` - Clean all profile build directories
+
+## Automated Testing
+
+Run throughput tests across all profiles using pytest-embedded:
+
+1. Set up the test environment:
+   ```bash
+   python3 -m venv .venv
+   .venv/bin/pip install -r requirements-test.txt
+   ```
+
+2. Build all profiles:
+   ```bash
+   make build-all
+   ```
+
+3. Run the tests:
+   ```bash
+   .venv/bin/pytest -v
+   ```
+
+   Or test a specific profile:
+   ```bash
+   .venv/bin/pytest -v -k balanced
+   ```
+
+Results are displayed in a summary table at the end of the test run.
 
 ## What It Does
 
@@ -79,3 +102,4 @@ I (23456) speedtest: Minimum free heap: 92456 bytes
 
 - ESP-IDF v5.4+ (tested with v5.5.2)
 - ESP32-C5 development board
+- Python 3 (for automated testing)
