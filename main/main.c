@@ -38,25 +38,50 @@
 
 static const char *TAG = "speedtest";
 
-/* Cloudflare speed test - 1MB download */
-#define SPEED_TEST_URL "https://speed.cloudflare.com/__down?bytes=1000000"
-#define SPEED_TEST_HOST "speed.cloudflare.com"
-#define DOWNLOAD_BYTES 1000000
+/* Parsed URL components (filled at runtime) */
+static char speed_test_host[128];
+static char speed_test_path[256];
+static char speed_test_request[512];
 
-static const char SPEED_TEST_REQUEST[] =
-    "GET /__down?bytes=1000000 HTTP/1.1\r\n"
-    "Host: speed.cloudflare.com\r\n"
-    "User-Agent: esp-idf/1.0 esp32\r\n"
-    "Connection: close\r\n"
-    "\r\n";
+/* Parse URL into host and path components */
+static void parse_url(const char *url) {
+  const char *host_start = strstr(url, "://");
+  if (!host_start) {
+    ESP_LOGE(TAG, "Invalid URL: %s", url);
+    return;
+  }
+  host_start += 3; /* Skip :// */
+
+  const char *path_start = strchr(host_start, '/');
+  if (path_start) {
+    size_t host_len = path_start - host_start;
+    if (host_len >= sizeof(speed_test_host))
+      host_len = sizeof(speed_test_host) - 1;
+    strncpy(speed_test_host, host_start, host_len);
+    speed_test_host[host_len] = '\0';
+    strncpy(speed_test_path, path_start, sizeof(speed_test_path) - 1);
+  } else {
+    strncpy(speed_test_host, host_start, sizeof(speed_test_host) - 1);
+    strcpy(speed_test_path, "/");
+  }
+
+  /* Build HTTP request */
+  snprintf(speed_test_request, sizeof(speed_test_request),
+           "GET %s HTTP/1.1\r\n"
+           "Host: %s\r\n"
+           "User-Agent: esp-idf/1.0 esp32\r\n"
+           "Connection: close\r\n"
+           "\r\n",
+           speed_test_path, speed_test_host);
+
+  ESP_LOGI(TAG, "Speed test URL: %s", url);
+  ESP_LOGI(TAG, "Host: %s, Path: %s", speed_test_host, speed_test_path);
+}
 
 /* TLS 1.3 ciphersuites to force TLS 1.3 */
 static const int tls13_ciphersuites[] = {
-    MBEDTLS_TLS1_3_AES_128_GCM_SHA256,
-    MBEDTLS_TLS1_3_AES_256_GCM_SHA384,
-    MBEDTLS_TLS1_3_CHACHA20_POLY1305_SHA256,
-    0
-};
+    MBEDTLS_TLS1_3_AES_128_GCM_SHA256, MBEDTLS_TLS1_3_AES_256_GCM_SHA384,
+    MBEDTLS_TLS1_3_CHACHA20_POLY1305_SHA256, 0};
 
 /*
  * Test configuration
@@ -108,8 +133,10 @@ static void start_ble_advertising(uint16_t interval_ms) {
 
   /* Convert ms to BLE units (0.625ms per unit) */
   uint16_t interval_units = (interval_ms * 1000) / 625;
-  if (interval_units < 32) interval_units = 32;   /* Min 20ms */
-  if (interval_units > 16384) interval_units = 16384; /* Max ~10s */
+  if (interval_units < 32)
+    interval_units = 32; /* Min 20ms */
+  if (interval_units > 16384)
+    interval_units = 16384; /* Max ~10s */
 
   struct ble_gap_adv_params adv_params = {
       .conn_mode = BLE_GAP_CONN_MODE_UND,
@@ -185,9 +212,11 @@ static void apply_config(const test_config_t *config) {
   ESP_LOGI(TAG, "Applying config: %s", config->name);
 
   /* WiFi power save */
-  wifi_ps_type_t ps_type = config->wifi_ps_enabled ? WIFI_PS_MIN_MODEM : WIFI_PS_NONE;
+  wifi_ps_type_t ps_type =
+      config->wifi_ps_enabled ? WIFI_PS_MIN_MODEM : WIFI_PS_NONE;
   esp_wifi_set_ps(ps_type);
-  ESP_LOGI(TAG, "  WiFi PS: %s", config->wifi_ps_enabled ? "enabled" : "disabled");
+  ESP_LOGI(TAG, "  WiFi PS: %s",
+           config->wifi_ps_enabled ? "enabled" : "disabled");
 
   /* BLE */
   if (config->ble_enabled) {
@@ -196,10 +225,17 @@ static void apply_config(const test_config_t *config) {
     esp_coex_preference_set(config->coex_pref);
     const char *coex_str = "unknown";
     switch (config->coex_pref) {
-      case ESP_COEX_PREFER_WIFI: coex_str = "WiFi"; break;
-      case ESP_COEX_PREFER_BT: coex_str = "BT"; break;
-      case ESP_COEX_PREFER_BALANCE: coex_str = "Balance"; break;
-      default: break;
+    case ESP_COEX_PREFER_WIFI:
+      coex_str = "WiFi";
+      break;
+    case ESP_COEX_PREFER_BT:
+      coex_str = "BT";
+      break;
+    case ESP_COEX_PREFER_BALANCE:
+      coex_str = "Balance";
+      break;
+    default:
+      break;
     }
     ESP_LOGI(TAG, "  Coex preference: %s", coex_str);
     ESP_LOGI(TAG, "  BLE adv interval: %d ms", config->ble_adv_interval_ms);
@@ -208,7 +244,8 @@ static void apply_config(const test_config_t *config) {
     stop_ble();
   }
 
-  ESP_LOGI(TAG, "  TLS version: %s", config->tls_version == TLS_VERSION_1_3 ? "1.3" : "1.2");
+  ESP_LOGI(TAG, "  TLS version: %s",
+           config->tls_version == TLS_VERSION_1_3 ? "1.3" : "1.2");
 
   /* Small delay to let settings take effect */
   vTaskDelay(pdMS_TO_TICKS(100));
@@ -253,7 +290,7 @@ static test_result_t run_speed_test(const test_config_t *config) {
   }
 
   int64_t connect_start = esp_timer_get_time();
-  if (esp_tls_conn_http_new_sync(SPEED_TEST_URL, &cfg, tls) != 1) {
+  if (esp_tls_conn_http_new_sync(CONFIG_SPEEDTEST_URL, &cfg, tls) != 1) {
     ESP_LOGE(TAG, "Connection failed!");
     esp_tls_conn_destroy(tls);
     return result;
@@ -263,9 +300,9 @@ static test_result_t run_speed_test(const test_config_t *config) {
 
   /* Send request */
   size_t written = 0;
-  size_t request_len = strlen(SPEED_TEST_REQUEST);
+  size_t request_len = strlen(speed_test_request);
   while (written < request_len) {
-    ret = esp_tls_conn_write(tls, SPEED_TEST_REQUEST + written,
+    ret = esp_tls_conn_write(tls, speed_test_request + written,
                              request_len - written);
     if (ret > 0) {
       written += ret;
@@ -409,6 +446,9 @@ static void test_task(void *pvparameters) {
 }
 
 void app_main(void) {
+  /* Parse speed test URL */
+  parse_url(CONFIG_SPEEDTEST_URL);
+
   ESP_ERROR_CHECK(nvs_flash_init());
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());

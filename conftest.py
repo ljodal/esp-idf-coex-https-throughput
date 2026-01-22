@@ -33,7 +33,7 @@ def discover_profiles() -> list[str]:
     for f in project_dir.glob('sdkconfig.*'):
         name = f.name.replace('sdkconfig.', '')
         # Skip non-profile files
-        if name not in ('defaults', 'old', 'wifi') and not name.startswith('ci'):
+        if name not in ('defaults', 'old', 'local') and not name.startswith('ci'):
             profiles.append(name)
     return sorted(profiles)
 

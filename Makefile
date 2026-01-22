@@ -10,18 +10,19 @@
 #   make clean                        # Clean current profile
 #   make clean-all                    # Clean all profile builds
 #
-# WiFi credentials (required):
-#   Create sdkconfig.wifi (gitignored) with your credentials:
-#     echo 'CONFIG_EXAMPLE_WIFI_SSID="your_ssid"' > sdkconfig.wifi
-#     echo 'CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"' >> sdkconfig.wifi
+# Local overrides (required):
+#   Create sdkconfig.local (gitignored) with WiFi credentials and any other overrides:
+#     CONFIG_EXAMPLE_WIFI_SSID="your_ssid"
+#     CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"
+#     CONFIG_SPEEDTEST_URL="https://example.com/file"  # optional
 #
 # Profiles are auto-discovered from sdkconfig.* files
 
 # Default profile
 PROFILE ?= balanced
 
-# Auto-discover profiles from sdkconfig.* files (excluding defaults and old)
-PROFILES := $(shell ls sdkconfig.* 2>/dev/null | sed 's/sdkconfig\.//' | grep -v -E '^(defaults|old|wifi)$$')
+# Auto-discover profiles from sdkconfig.* files (excluding special files)
+PROFILES := $(shell ls sdkconfig.* 2>/dev/null | sed 's/sdkconfig\.//' | grep -v -E '^(defaults|old|local)$$')
 
 # Target chip
 TARGET := esp32c5
@@ -43,10 +44,10 @@ all: build flash monitor
 build:
 	@echo "Building profile: $(PROFILE)"
 	@echo "Build directory: $(BUILD_DIR)"
-	@test -f sdkconfig.wifi || (echo "Error: sdkconfig.wifi not found. Create it with your WiFi credentials:" && \
-		echo "  echo 'CONFIG_EXAMPLE_WIFI_SSID=\"your_ssid\"' > sdkconfig.wifi" && \
-		echo "  echo 'CONFIG_EXAMPLE_WIFI_PASSWORD=\"your_pass\"' >> sdkconfig.wifi" && exit 1)
-	SDKCONFIG_DEFAULTS="sdkconfig.wifi;sdkconfig.defaults;sdkconfig.$(PROFILE)" \
+	@test -f sdkconfig.local || (echo "Error: sdkconfig.local not found. Create it with your WiFi credentials:" && \
+		echo "  echo 'CONFIG_EXAMPLE_WIFI_SSID=\"your_ssid\"' > sdkconfig.local" && \
+		echo "  echo 'CONFIG_EXAMPLE_WIFI_PASSWORD=\"your_pass\"' >> sdkconfig.local" && exit 1)
+	SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(PROFILE);sdkconfig.local" \
 	idf.py -B $(BUILD_DIR) set-target $(TARGET) build
 
 # Flash current profile

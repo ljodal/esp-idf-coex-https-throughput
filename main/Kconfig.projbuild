@@ -1,0 +1,10 @@
+menu "Throughput Test Configuration"
+
+    config SPEEDTEST_URL
+        string "Speed test download URL"
+        default "https://speed.cloudflare.com/__down?bytes=1000000"
+        help
+            URL to download for throughput testing.
+            The default is Cloudflare's speed test endpoint (1MB).
+
+endmenu

@@ -32,10 +32,12 @@ See [COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
 
 ## Quick Start
 
-1. Create `sdkconfig.wifi` with your WiFi credentials:
+1. Create `sdkconfig.local` with your WiFi credentials (and any other overrides):
    ```bash
-   echo 'CONFIG_EXAMPLE_WIFI_SSID="your_ssid"' > sdkconfig.wifi
-   echo 'CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"' >> sdkconfig.wifi
+   echo 'CONFIG_EXAMPLE_WIFI_SSID="your_ssid"' > sdkconfig.local
+   echo 'CONFIG_EXAMPLE_WIFI_PASSWORD="your_pass"' >> sdkconfig.local
+   # Optional: custom test URL
+   # echo 'CONFIG_SPEEDTEST_URL="https://example.com/testfile"' >> sdkconfig.local
    ```
 
 2. Build with a profile:
