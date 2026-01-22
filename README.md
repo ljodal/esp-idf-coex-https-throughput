@@ -20,7 +20,7 @@ CONFIG_ESP_WIFI_RX_IRAM_OPT=n
 
 ## Profiles
 
-Three pre-tuned profiles in `sdkconfig.defaults`:
+Three pre-tuned profiles are available:
 
 | Profile            | Throughput  | Free Heap | TCP_WND | Mailbox |
 |--------------------|-------------|-----------|---------|---------|
@@ -28,22 +28,37 @@ Three pre-tuned profiles in `sdkconfig.defaults`:
 | BALANCED (default) |   ~5 Mbit/s |    ~90 KB |   16384 |      12 |
 | MAX_SPEED          | ~6-7 Mbit/s |    ~55 KB |   32768 |      24 |
 
-These profiles are based on testing throughput in various cases, see
-[COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
+See [COEX_TUNING_RESULTS.md](COEX_TUNING_RESULTS.md) for detailed test results.
 
 ## Quick Start
 
-1. Set your WiFi credentials in `sdkconfig.defaults` or with `idf.py menuconfig`:
-   ```
-   CONFIG_EXAMPLE_WIFI_SSID="your_ssid"
-   CONFIG_EXAMPLE_WIFI_PASSWORD="your_password"
-   ```
-
-2. Build and flash:
+1. Set target:
    ```bash
    idf.py set-target esp32c5
-   idf.py build flash monitor
    ```
+
+2. Build with a profile (pass WiFi credentials via environment):
+   ```bash
+   WIFI_SSID="your_ssid" WIFI_PASSWORD="secret" make balanced
+   ```
+
+   Or create a `.env` file (gitignored) for convenience:
+   ```bash
+   echo 'WIFI_SSID=your_ssid' >> .env
+   echo 'WIFI_PASSWORD=secret' >> .env
+   make balanced
+   ```
+
+3. Flash and monitor:
+   ```bash
+   make flash monitor
+   ```
+
+Available make targets:
+- `make balanced` - Best tradeoff (~5 Mbit/s, ~90KB heap)
+- `make minimal_ram` - For RAM-constrained apps (~3 Mbit/s, ~100KB heap)
+- `make max_speed` - Maximum throughput (~6-7 Mbit/s, ~55KB heap)
+- `make menuconfig` - Configure via menu
 
 ## What It Does
 
