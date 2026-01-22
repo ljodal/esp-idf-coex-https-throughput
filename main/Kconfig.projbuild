@@ -1,5 +1,26 @@
 menu "Throughput Test Configuration"
 
+    config SPEEDTEST_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+        help
+            SSID (network name) to connect to.
+
+    config SPEEDTEST_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+        help
+            WiFi password (WPA or WPA2).
+
+    config SPEEDTEST_WIFI_COUNTRY
+        string "WiFi country code"
+        default "01"
+        help
+            Two-letter country code for WiFi regulatory settings.
+            Use "01" for world safe mode (channels 1-11, conservative TX power).
+            Set to your actual country code (e.g., "US", "NO", "DE") for
+            optimal channel availability and TX power.
+
     config SPEEDTEST_URL
         string "Speed test download URL"
         default "https://speed.cloudflare.com/__down?bytes=1000000"
